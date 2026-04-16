@@ -1,15 +1,27 @@
 {
   "name": "g1x5j-mcp-server",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
+  "description": "MCP server that exposes TDL todo service to Claude Desktop and other MCP clients",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ohminkwon/g1x5j-mcp-server.git"
+  },
   "bin": {
     "g1x5j-mcp-server": "./dist/index.js"
   },
+  "files": [
+    "dist/index.js",
+    "dist/client.js",
+    "dist/config.js",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "smoke": "node dist/smoke.js"
+    "smoke": "node dist/smoke.js",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
