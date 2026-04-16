@@ -35,6 +35,24 @@ type PageResponse<T> = {
   hasPrev: boolean;
 };
 
+type WeeklyGoalJourney = {
+  journeyOrder: number;
+  todoId: number;
+  title: string;
+  isCompleted: boolean;
+  priority: number;
+  startAt: string | null;
+  dueAt: string | null;
+};
+
+type WeeklyGoalResponse = {
+  id: number;
+  title: string;
+  weekStart: string;
+  weekEnd: string;
+  journeys: WeeklyGoalJourney[];
+};
+
 function textContent(text: string) {
   return { content: [{ type: "text" as const, text }] };
 }
@@ -75,6 +93,25 @@ function formatTodoFull(todo: TodoResponse): string {
   if (todo.dueAt) lines.push(`dueAt: ${todo.dueAt}`);
   lines.push(`createdAt: ${todo.createdAt}`);
   lines.push(`updatedAt: ${todo.updatedAt}`);
+  return lines.join("\n");
+}
+
+function formatGoalFull(goal: WeeklyGoalResponse): string {
+  const lines = [
+    `id: ${goal.id}`,
+    `title: ${goal.title}`,
+    `week: ${goal.weekStart} ~ ${goal.weekEnd}`,
+  ];
+  if (goal.journeys.length === 0) {
+    lines.push("journeys: (비어있음)");
+  } else {
+    lines.push(`journeys (${goal.journeys.length}/5):`);
+    for (const j of goal.journeys) {
+      const check = j.isCompleted ? "[x]" : "[ ]";
+      const pri = j.priority ? `P${j.priority} ` : "";
+      lines.push(`  ${j.journeyOrder}. ${check} ${pri}${j.title} (todoId=${j.todoId})`);
+    }
+  }
   return lines.join("\n");
 }
 
@@ -479,6 +516,104 @@ server.registerTool(
     try {
       await request<void>(config, `/todos/${id}/pin`, { method: "DELETE" });
       return textContent(`고정 해제 완료: todoId=${id}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- get_current_goal ----------
+server.registerTool(
+  "get_current_goal",
+  {
+    title: "Get current weekly goal",
+    description:
+      "Retrieve the current week's goal with its journey slots. Returns empty if no goal is set.",
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      const goal = await request<WeeklyGoalResponse>(config, "/weekly-goals/current");
+      if (!goal) {
+        return textContent("현재 주간 목표가 없습니다.");
+      }
+      return textContent(formatGoalFull(goal));
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- create_goal ----------
+server.registerTool(
+  "create_goal",
+  {
+    title: "Create a weekly goal",
+    description:
+      "Create a new weekly goal for the current week. Only one goal per week is allowed.",
+    inputSchema: {
+      title: z
+        .string()
+        .min(1)
+        .max(500)
+        .describe("Goal title (1-500 characters)."),
+    },
+  },
+  async ({ title }) => {
+    try {
+      const goal = await request<WeeklyGoalResponse>(config, "/weekly-goals", {
+        method: "POST",
+        body: { title },
+      });
+      return textContent(`주간 목표 생성 완료:\n${formatGoalFull(goal)}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- update_goal ----------
+server.registerTool(
+  "update_goal",
+  {
+    title: "Update a weekly goal",
+    description: "Update the title of an existing weekly goal.",
+    inputSchema: {
+      goalId: z.number().int().positive().describe("The numeric id of the weekly goal."),
+      title: z
+        .string()
+        .min(1)
+        .max(500)
+        .describe("New goal title (1-500 characters)."),
+    },
+  },
+  async ({ goalId, title }) => {
+    try {
+      const goal = await request<WeeklyGoalResponse>(config, `/weekly-goals/${goalId}`, {
+        method: "PATCH",
+        body: { title },
+      });
+      return textContent(`주간 목표 수정 완료:\n${formatGoalFull(goal)}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- delete_goal ----------
+server.registerTool(
+  "delete_goal",
+  {
+    title: "Delete a weekly goal",
+    description: "Soft-delete a weekly goal. Pinned todos are preserved but unpinned.",
+    inputSchema: {
+      goalId: z.number().int().positive().describe("The numeric id of the weekly goal."),
+    },
+  },
+  async ({ goalId }) => {
+    try {
+      await request<void>(config, `/weekly-goals/${goalId}`, { method: "DELETE" });
+      return textContent(`주간 목표 삭제 완료: goalId=${goalId}`);
     } catch (e) {
       return toErrorContent(e);
     }
