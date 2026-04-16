@@ -1,6 +1,7 @@
 export type Config = {
   pat: string;
   baseUrl: string;
+  timezone: string;
 };
 
 export function loadConfig(): Config {
@@ -10,5 +11,7 @@ export function loadConfig(): Config {
     process.exit(1);
   }
   const baseUrl = (process.env.TDL_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
-  return { pat, baseUrl };
+  const timezone =
+    process.env.TDL_TIMEZONE || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return { pat, baseUrl, timezone };
 }

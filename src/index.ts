@@ -268,6 +268,223 @@ server.registerTool(
   },
 );
 
+// ---------- get_calendar_summary ----------
+server.registerTool(
+  "get_calendar_summary",
+  {
+    title: "Get monthly calendar summary",
+    description:
+      "Returns a summary of todos for a given month, grouped by date. Useful for seeing the overall schedule.",
+    inputSchema: {
+      month: z
+        .string()
+        .describe('Month in YYYY-MM format (e.g. "2026-04").'),
+      includeCompleted: z
+        .boolean()
+        .optional()
+        .describe("Include completed todos. Default false."),
+    },
+  },
+  async ({ month, includeCompleted }) => {
+    try {
+      const data = await request<{
+        month: string;
+        days: { date: string; items: { todoId: number; title: string; priority: number; isCompleted: boolean }[] }[];
+      }>(config, "/todos/calendar/summary", {
+        query: { month, includeCompleted },
+        extraHeaders: { "X-Timezone": config.timezone },
+      });
+      if (data.days.length === 0) {
+        return textContent(`${data.month}: 일정 없음`);
+      }
+      const lines = data.days.map((day) => {
+        const items = day.items
+          .map((t) => {
+            const check = t.isCompleted ? "[x]" : "[ ]";
+            const pri = t.priority ? `P${t.priority} ` : "";
+            return `  ${check} ${pri}${t.title} (id=${t.todoId})`;
+          })
+          .join("\n");
+        return `${day.date} (${day.items.length}건)\n${items}`;
+      });
+      return textContent(`${data.month} 캘린더:\n\n${lines.join("\n\n")}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- get_calendar_day ----------
+server.registerTool(
+  "get_calendar_day",
+  {
+    title: "Get todos for a specific day",
+    description:
+      "Returns all todos that overlap with a given date. Useful for daily planning.",
+    inputSchema: {
+      date: z
+        .string()
+        .describe('Date in YYYY-MM-DD format (e.g. "2026-04-16").'),
+      includeCompleted: z
+        .boolean()
+        .optional()
+        .describe("Include completed todos. Default false."),
+    },
+  },
+  async ({ date, includeCompleted }) => {
+    try {
+      const data = await request<{
+        date: string;
+        items: { id: number; title: string; isCompleted: boolean; priority: number; startAt: string | null; dueAt: string | null }[];
+      }>(config, "/todos/calendar/day", {
+        query: { date, includeCompleted },
+        extraHeaders: { "X-Timezone": config.timezone },
+      });
+      if (data.items.length === 0) {
+        return textContent(`${data.date}: 일정 없음`);
+      }
+      const lines = data.items.map((t, i) => {
+        const check = t.isCompleted ? "[x]" : "[ ]";
+        const pri = t.priority ? `P${t.priority} ` : "";
+        const due = t.dueAt ? ` — due ${t.dueAt.slice(0, 10)}` : "";
+        return `${i + 1}. ${check} ${pri}${t.title} (id=${t.id})${due}`;
+      });
+      return textContent(`${data.date} (${data.items.length}건):\n${lines.join("\n")}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- share_todo ----------
+server.registerTool(
+  "share_todo",
+  {
+    title: "Create a share link for a todo",
+    description:
+      "Generate a public share link for a todo. Others can view it without login.",
+    inputSchema: {
+      todoId: z.number().int().positive().describe("The numeric id of the todo."),
+      expiresIn: z
+        .enum(["none", "1d", "7d", "30d"])
+        .optional()
+        .describe('Expiration: "none" (never), "1d", "7d", "30d". Default "7d".'),
+    },
+  },
+  async ({ todoId, expiresIn }) => {
+    try {
+      const data = await request<{
+        shareToken: string;
+        shareUrl: string;
+        expiresAt: string | null;
+      }>(config, `/todos/${todoId}/share`, {
+        method: "POST",
+        body: { expiresIn: expiresIn ?? "7d" },
+      });
+      const expires = data.expiresAt ? `만료: ${data.expiresAt.slice(0, 10)}` : "만료 없음";
+      return textContent(`공유 링크 생성:\n${data.shareUrl}\n${expires}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- get_share ----------
+server.registerTool(
+  "get_share",
+  {
+    title: "Get existing share link",
+    description: "Check if a todo has an active share link.",
+    inputSchema: {
+      todoId: z.number().int().positive().describe("The numeric id of the todo."),
+    },
+  },
+  async ({ todoId }) => {
+    try {
+      const data = await request<{
+        shareToken: string;
+        shareUrl: string;
+        expiresAt: string | null;
+      }>(config, `/todos/${todoId}/share`);
+      const expires = data.expiresAt ? `만료: ${data.expiresAt.slice(0, 10)}` : "만료 없음";
+      return textContent(`공유 링크:\n${data.shareUrl}\n${expires}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- revoke_share ----------
+server.registerTool(
+  "revoke_share",
+  {
+    title: "Revoke a share link",
+    description: "Remove a todo's public share link. The shared URL will stop working.",
+    inputSchema: {
+      todoId: z.number().int().positive().describe("The numeric id of the todo."),
+    },
+  },
+  async ({ todoId }) => {
+    try {
+      await request<void>(config, `/todos/${todoId}/share`, { method: "DELETE" });
+      return textContent(`공유 해제 완료: todoId=${todoId}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- pin_todo ----------
+server.registerTool(
+  "pin_todo",
+  {
+    title: "Pin a todo to weekly goal",
+    description:
+      "Pin a todo to a journey slot on the weekly goal board. Requires an existing weekly goal.",
+    inputSchema: {
+      id: z.number().int().positive().describe("The numeric id of the todo."),
+      goalId: z.number().int().positive().describe("The numeric id of the weekly goal."),
+      journeyOrder: z
+        .number()
+        .int()
+        .min(1)
+        .max(5)
+        .describe("Journey slot position (1-5)."),
+    },
+  },
+  async ({ id, goalId, journeyOrder }) => {
+    try {
+      await request<void>(config, `/todos/${id}/pin`, {
+        method: "PATCH",
+        body: { goalId, journeyOrder },
+      });
+      return textContent(`고정 완료: todoId=${id} → goalId=${goalId}, slot=${journeyOrder}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
+// ---------- unpin_todo ----------
+server.registerTool(
+  "unpin_todo",
+  {
+    title: "Unpin a todo from weekly goal",
+    description: "Remove a todo from its weekly goal journey slot.",
+    inputSchema: {
+      id: z.number().int().positive().describe("The numeric id of the todo."),
+    },
+  },
+  async ({ id }) => {
+    try {
+      await request<void>(config, `/todos/${id}/pin`, { method: "DELETE" });
+      return textContent(`고정 해제 완료: todoId=${id}`);
+    } catch (e) {
+      return toErrorContent(e);
+    }
+  },
+);
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

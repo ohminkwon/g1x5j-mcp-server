@@ -21,6 +21,7 @@ export type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined | null>;
+  extraHeaders?: Record<string, string>;
 };
 
 export async function request<T>(
@@ -28,7 +29,7 @@ export async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, query } = options;
+  const { method = "GET", body, query, extraHeaders } = options;
 
   let url = config.baseUrl + path;
   if (query) {
@@ -52,6 +53,7 @@ export async function request<T>(
         Authorization: `Bearer ${config.pat}`,
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...extraHeaders,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
