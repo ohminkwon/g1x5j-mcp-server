@@ -8,6 +8,30 @@ MCP server for [G1x5J](https://g1x5j.app) todo service — Claude Desktop, VS Co
 
 ## Quick Start
 
+### [클로드 데스크탑 코드탭](https://claude.com/download) / Claude Code CLI 사용자
+
+Claude Code 또는 claude.ai 코드탭에서 아래와 같이 요청하면 설치부터 설정까지 자동으로 처리됩니다:
+
+> "https://github.com/ohminkwon/g1x5j-mcp-server 클론하고 MCP 서버 설정해줘. 권한은 전부 허용으로 해줘."
+
+이후, 해당 폴더 /.claude/settings.local.json 파일에서 아래와 같이 확인 가능
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__g1x5j__*",
+    ]
+  }
+}
+```
+
+### Claude Desktop 사용자
+
+Claude Desktop에서는 직접 명령 실행이 불가하므로 아래 수동 설치를 따라주세요. 설치 과정에서 도움이 필요하면 Claude에게 물어보세요.
+
+### 수동 설치
+
 ```bash
 git clone https://github.com/ohminkwon/g1x5j-mcp-server.git
 cd g1x5j-mcp-server
@@ -15,12 +39,15 @@ npm install
 npm run build
 ```
 
-Claude Desktop `claude_desktop_config.json`에 추가:
+Claude Desktop 설정 파일에 추가:
+
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
-    "tdl": {
+    "g1x5j": {
       "command": "node",
       "args": ["/path/to/g1x5j-mcp-server/dist/index.js"],
       "env": {
@@ -32,8 +59,10 @@ Claude Desktop `claude_desktop_config.json`에 추가:
 }
 ```
 
-> `args`의 경로를 clone한 실제 절대 경로로 변경하세요.
-> `TDL_PAT`은 TDL 설정 페이지에서 발급한 Personal Access Token입니다.
+> **`args` 경로 변경 필요**: `/path/to/g1x5j-mcp-server/dist/index.js` 전체를 clone한 위치의 절대 경로로 바꾸세요.
+> 예: `C:\Users\홍길동\projects`에서 clone했다면 → `C:/Users/홍길동/projects/g1x5j-mcp-server/dist/index.js`
+>
+> **`TDL_PAT`**: [G1x5J](https://g1x5j.app) 설정 페이지에서 발급한 Personal Access Token을 입력하세요.
 
 Claude Desktop 재시작 후 tool 목록에 17개 tool이 노출됩니다.
 
@@ -41,7 +70,7 @@ Claude Desktop 재시작 후 tool 목록에 17개 tool이 노출됩니다.
 
 | 이름 | 필수 | 기본값 | 설명 |
 |------|------|--------|------|
-| `TDL_PAT` | O | — | TDL 설정 페이지에서 발급한 Personal Access Token |
+| `TDL_PAT` | O | — | G1x5J 설정 페이지에서 발급한 Personal Access Token |
 | `TDL_BASE_URL` | X | `http://localhost:8080` | Backend API base URL |
 | `TDL_TIMEZONE` | X | 시스템 자동 감지 | IANA 타임존 (예: `Asia/Seoul`) |
 
