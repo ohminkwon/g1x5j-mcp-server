@@ -1,6 +1,6 @@
 {
   "name": "g1x5j-mcp-server",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "MCP server that exposes TDL todo service to Claude Desktop and other MCP clients",
   "type": "module",
   "license": "MIT",

@@ -71,7 +71,7 @@ Claude Desktop 재시작 후 tool 목록에 17개 tool이 노출됩니다.
 | 이름 | 필수 | 기본값 | 설명 |
 |------|------|--------|------|
 | `TDL_PAT` | O | — | G1x5J 설정 페이지에서 발급한 Personal Access Token |
-| `TDL_BASE_URL` | X | `http://localhost:8080` | Backend API base URL |
+| `TDL_BASE_URL` | X | `https://api.g1x5j.app` | Backend API base URL (로컬 개발 시 `http://localhost:8080` 으로 오버라이드) |
 | `TDL_TIMEZONE` | X | 시스템 자동 감지 | IANA 타임존 (예: `Asia/Seoul`) |
 
 ## 제공 Tool (17개)
@@ -131,7 +131,7 @@ g1x5j-mcp-server
 - [G1x5J](https://g1x5j.app) 계정 + PAT 발급
 
 ## 버전
-v0.2.0 — Todo CRUD, Calendar, Share, Pin, Goal 17개 tool 지원.
+v1.0.0 — Todo CRUD, Calendar, Share, Pin, Goal 17개 tool 지원.
 
 ## 라이선스
 MIT
